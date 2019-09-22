@@ -1,5 +1,4 @@
 # greenhouse-client
-
 This repository contains code and documentation for a raspberry device that can measure humidity and temperature.
 
 Contents:
