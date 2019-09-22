@@ -1,14 +1,13 @@
 # greenhouse-client
 
 This repository contains code and documentation for a raspberry device that can measure humidity and temperature.
-I'm using it in my greenhouse powered by a 12 volt battery and a solar panel.
 
 Contents:
  - Documentation for the hardware setup
  - ansible: Raspberry configuration that reduces power consumption to a minimum
  - src: Golang code which collects data from sensor and sends it to a server side API in regular intervals
 
-The server side implementation can be found here (soon):
+The server side counterpart can be found here (soon):
 https://github.com/ytsworld/greenhouse-receiver
 
 ## Hardware
