@@ -1,0 +1,20 @@
+[all:vars]
+ansible_connection=ssh 
+ansible_ssh_user=pi 
+ansible_ssh_pass=yyyyyyyyy
+
+# Reduce memory reservation for GPU as no UI is expected (minimal installation)
+gpu_memory=16
+
+# Lower cpu freq and save some juice (default 700)
+cpu_freq=600
+
+# dhcpcd.conf
+eth0_router=192.168.xxx.xxx
+eth0_nameservers=192.168.xxx.xxx
+
+[greenhouse]
+# ansible_ssh_host is the ip address under which the device is currently available
+# eth0_static_ip is the target ip at which eth0 should listen
+rpiv3-greenhouse-dev     ansible_ssh_host=192.168.xxx.xxx eth0_static_ip=192.168.xxx.xxx/24 dev_device=true  prod_device=false
+rpiv3-greenhouse-prod    ansible_ssh_host=192.168.xxx.xxx eth0_static_ip=192.168.xxx.xxx/24 dev_device=false prod_device=true

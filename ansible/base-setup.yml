@@ -1,0 +1,113 @@
+- hosts: greenhouse
+  become: true
+  become_user: root
+  become_method: sudo
+  environment:
+  handlers:
+
+  tasks:
+
+#######################################
+# Basic system settings               #
+#######################################
+
+   - name: Change host name defined in inventory
+     hostname: name="{{ inventory_hostname }}"
+
+   - name: "Add new hostname to hosts file"
+     lineinfile: dest=/etc/hosts line="127.0.0.1 {{inventory_hostname}}" state=present
+
+   - name: Change keyboard to german layout
+     template: src=./resources/base-setup/etc/default/keyboard dest=/etc/default/keyboard owner=root group=root mode=0544
+
+   - name: Exchange default boot config and enable SPI
+     template: src=./resources/base-setup/boot/config.txt dest=/boot/config.txt owner=root group=root mode=0755
+
+   - name: Create ansible state directory
+     file: path=/home/pi/.ansible_state state=directory owner=pi group=pi mode=0755
+
+   - name: Create ansible scripts directory
+     file: path=/home/pi/.ansible_scripts state=directory owner=pi group=pi mode=0755
+
+   - name: copy timezone script
+     template: src=./resources/base-setup/home/pi/.ansible_scripts/fixTimezone.sh dest=/home/pi/.ansible_scripts/fixTimezone.sh owner=pi group=pi mode=0755
+
+   - name: execute timezone script
+     command: /home/pi/.ansible_scripts/fixTimezone.sh
+     args:
+       creates: /home/pi/.ansible_state/timezoneisalreadyset
+     register: timezonechange
+
+   - name: copy aliases
+     template: src=./resources/base-setup/etc/profile.d/00-aliases.sh dest=/etc/profile.d/00-aliases.sh owner=root group=root mode=0744
+
+#######################################
+# SSH                                 #
+#######################################
+   - name: Create user ssh directory
+     file: path=/home/pi/.ssh state=directory owner=pi group=pi mode=0700
+
+   - name: Add public keys
+     copy: src=./resources/base-setup/home/pi/.ssh/authorized_keys dest=/home/pi/.ssh/authorized_keys owner=pi group=pi mode=0600
+
+   - name: Exchange sshd conf and restart service if file has changes
+     template: src=./resources/base-setup/etc/ssh/sshd_config dest=/etc/ssh/sshd_config owner=root group=root mode=0544
+     register: sshconfigchange
+
+   - name: enable ssh service
+     systemd: name=ssh enabled=yes
+
+   - name: restart ssh
+     systemd: name=ssh state=restarted
+     when: sshconfigchange|succeeded
+
+#######################################
+# Required packages                   #
+#######################################
+
+   - name: Upgrade raspi
+     apt:
+       upgrade: dist
+       update_cache: yes
+       dpkg_options: force-confold,force-confdef
+       cache_valid_time: 86400
+
+
+   - name: Install package "dos2unix"
+     apt:
+       name: dos2unix
+       state: present
+
+   - name: Install package "zip"
+     apt:
+       name: zip
+       state: present
+
+   - name: Install package "resolvconf"
+     apt:
+       name: resolvconf
+       state: present
+
+#######################################
+# Network configuration               #
+#######################################
+
+   - name: Add network interface config
+     template: src=./resources/base-setup/etc/dhcpcd.conf dest=/etc/dhcpcd.conf owner=root group=netdev mode=0554
+     register: networkconfighas
+
+   - name: restart dhcpcd
+     systemd: name=dhcpcd state=restarted
+     when: networkconfighas.changed
+
+#######################################
+# Reboot if required                  #
+#######################################
+
+   - name: restart machine if network config has changed
+     shell: sleep 2 && shutdown -r now "Ansible updates triggered"
+     async: 1
+     poll: 0
+     ignore_errors: true
+     when: timezonechange|succeeded
+

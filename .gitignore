@@ -1,0 +1,21 @@
+build
+
+# IDE
+/*.iml
+/*.ipr
+/.idea
+/*.iws
+.vscode/
+
+# ansible
+**/*.retry
+
+# secrets
+/inventory
+
+# compiled binary
+greenhouse-client
+
+# secrets
+*.sa.json
+example/

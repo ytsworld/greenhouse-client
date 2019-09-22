@@ -1,0 +1,124 @@
+- hosts: greenhouse
+  become: true
+  become_user: root
+  become_method: sudo
+  environment:
+  handlers:
+
+  tasks:
+
+#############################################
+# Prepare wlan interface as access point    #
+#############################################
+# Inspired by: https://frillip.com/using-your-raspberry-pi-3-as-a-wifi-access-point-with-hostapd/
+
+#   - name: Install the package hostapd
+#     apt:
+#       name: hostapd
+#       state: present
+#
+#   - name: Install the package wireless-tools
+#     apt:
+#       name: wireless-tools
+#       state: present
+#
+#   - name: Install the package dnsmasq
+#     apt:
+#       name: dnsmasq
+#       state: present
+#
+#   - name: Install the package iw
+#     apt:
+#       name: iw
+#       state: present
+#
+#   - name: copy dnsmasq.conf
+#     template: src=files/greenhouse/etc/dnsmasq.conf dest=/etc/dnsmasq.conf owner=root group=root mode=0644
+#
+#   - name: copy hostapd.conf
+#     template: src=files/greenhouse/etc/hostapd/hostapd.conf dest=/etc/hostapd/hostapd.conf owner=root group=root mode=0600
+#
+#   - name: copy crda
+#     template: src=files/greenhouse/etc/default/crda dest=/etc/default/crda owner=root group=root mode=0644
+#
+#   - name: Add network interface config
+#     template: src=files/greenhouse/etc/network/interfaces dest=/etc/network/interfaces
+#
+#   - name: Add hostapd default config
+#     template: src=files/greenhouse/etc/default/hostapd dest=/etc/default/hostapd owner=root group=root mode=0644
+#
+#   - name: Add sysctl.conf
+#     template: src=files/greenhouse/etc/sysctl.conf dest=/etc/sysctl.conf owner=root group=root mode=0644
+#
+#   - name: Add iptables.ipv4.nat
+#     template: src=files/greenhouse/etc/iptables.ipv4.nat dest=/etc/iptables.ipv4.nat owner=root group=root mode=0644
+#
+#   - name: Add rc.local
+#     template: src=files/greenhouse/etc/rc.local dest=/etc/rc.local owner=root group=root mode=0644
+
+#############################################
+#   Install golang on dev device            #
+#############################################
+   - name: install git
+     apt:
+       name: git
+       state: present
+     when: dev_device
+
+   - name: Create gopath directory
+     file: path=/home/pi/go state=directory owner=pi group=pi mode=0755
+     when: dev_device
+
+   - name: "add GOPATH file to bashrc"
+     lineinfile: dest=/home/pi/.bashrc line="export GOPATH=/home/pi/go" state=present
+     when: dev_device
+
+   - name: copy golang installation script
+     template: src=./resources/greenhouse/home/pi/.ansible_scripts/install_golang.sh dest=/home/pi/.ansible_scripts/install_golang.sh owner=pi group=pi mode=0755
+     when: dev_device
+
+   - name: install golang
+     command: /home/pi/.ansible_scripts/install_golang.sh
+     args:
+       creates: /home/pi/.ansible_state/golang_installed
+     when: dev_device
+
+  
+#############################################
+#   Only for production env                 #
+#   Greenhouse client main script           #
+#############################################
+
+   # Hint: greenhouse-client binary only exists if you have a dev device
+   # and have sucessfully built it using ./scripts/trigger_build.sh
+   - name: Copy greenhouse-client binary
+     copy: src=../greenhouse-client dest=/home/pi/greenhouse-client owner=pi group=pi mode=0755
+     when: prod_device
+
+   - name: Start the main script on boot
+     cron:
+       name: greenhouse script
+       special_time: reboot
+       job: "/home/pi/greenhouse-client >/var/log/greenhouse.log 2>&1"
+       user: root
+     when: prod_device
+
+#############################################
+#   Script for reducing power consumption   #
+#############################################
+   - name: copy reduce power consumption script
+     template: src=./resources/greenhouse/home/pi/reducePowerConsumption.sh dest=/home/pi/reducePowerConsumption.sh owner=pi group=pi mode=0755
+     when: prod_device
+
+   - name: copy cancel reduce power consumption script
+     template: src=./resources/greenhouse/home/pi/cancelPowerConsumption.sh dest=/home/pi/cancelPowerConsumption.sh owner=pi group=pi mode=0755
+     when: prod_device
+
+   - name: Add reduce-script to root crontab
+     cron:
+       name: reduce power consumption
+       special_time: reboot
+       job: "/home/pi/reducePowerConsumption.sh >/var/log/reducePowerConsumption.log 2>&1"
+       user: root
+     when: prod_device
+
