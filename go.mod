@@ -1,4 +1,4 @@
-module github.com/YT84/greenhouse-client
+module github.com/ytsworld/greenhouse-client
 
 go 1.12
 

@@ -1,10 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
-	greenhouse "github.com/YT84/greenhouse-client/pkg"
+	greenhouse "github.com/ytsworld/greenhouse-client/pkg"
 	"github.com/d2r2/go-dht"
 	"gobot.io/x/gobot"
 	"gobot.io/x/gobot/drivers/gpio"
@@ -51,11 +52,11 @@ func main() {
 			}
 			data.Temperature = temperature
 			data.Humidity = humidity
+			data.Success = true
 
 			led.Off()
 
-			data.Message = fmt.Sprintf("Temperature = %v*C, Humidity = %v%%, Soil Moisture: %d\n",
-				temperature, humidity, resistance)
+			sendData(&data)
 
 			reportSuccess(&data, led)
 
@@ -71,9 +72,19 @@ func main() {
 	robot.Start()
 }
 
+func sendData(data *greenhouse.Data) error {
+	jsonPayload, err := json.Marshal(&data)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Sensor data json: %s\n", jsonPayload)
+	// TODO Send
+
+	return nil
+}
+
 func reportSuccess(data *greenhouse.Data, led *gpio.LedDriver) {
 	indicateSuccessOnLed(led)
-	fmt.Printf("Success: %s\n", data.Message)
 }
 
 func reportError(data *greenhouse.Data, led *gpio.LedDriver) {
