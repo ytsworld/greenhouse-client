@@ -95,11 +95,19 @@
      copy: src=../greenhouse-client dest=/home/pi/greenhouse-client owner=pi group=pi mode=0755
      when: prod_device
 
+   - name: Copy greenhouse-client wrapper script
+     copy: src=./resources/greenhouse/home/pi/runGreenhouse.sh dest=/home/pi/runGreenhouse.sh owner=pi group=pi mode=0755
+     when: prod_device
+
+   - name: Copy service account file for server
+     copy: src=../secrets/greenhouse-client.sa.json dest=/home/pi/greenhouse-client.sa.json owner=pi group=pi mode=0600
+     when: prod_device
+
    - name: Start the main script on boot
      cron:
        name: greenhouse script
        special_time: reboot
-       job: "/home/pi/greenhouse-client >/var/log/greenhouse.log 2>&1"
+       job: "/home/pi/runGreenhouse.sh >/var/log/greenhouse.log 2>&1"
        user: root
      when: prod_device
 

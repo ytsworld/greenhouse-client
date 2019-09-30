@@ -1,21 +1,34 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
-	greenhouse "github.com/ytsworld/greenhouse-client/pkg"
 	"github.com/d2r2/go-dht"
+	sal "github.com/salrashid123/oauth2/google"
+	greenhouse "github.com/ytsworld/greenhouse-client/pkg"
 	"gobot.io/x/gobot"
 	"gobot.io/x/gobot/drivers/gpio"
 	"gobot.io/x/gobot/drivers/spi"
 	"gobot.io/x/gobot/platforms/raspi"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 const (
 	ledPin                 = "8"
 	soilMoistureSPIChannel = 0
+	greenhouseReceiverURL  = "https://europe-west1-yt-dev-242017.cloudfunctions.net/greenhouse-receiver"
+	greenhouseReceiverAPI  = "/api/v1/greenhouse"
+)
+
+var (
+	timeout = time.Duration(30 * time.Second)
+	ctx     = context.Background()
 )
 
 func main() {
@@ -56,7 +69,11 @@ func main() {
 
 			led.Off()
 
-			sendData(&data)
+			err = sendData(&data)
+			if err != nil {
+				data.Message = fmt.Sprintf("Error sending data to server. %s", err)
+				reportError(&data, led)
+			}
 
 			reportSuccess(&data, led)
 
@@ -73,12 +90,32 @@ func main() {
 }
 
 func sendData(data *greenhouse.Data) error {
+
+	client, err := getAuthorizedClient()
+	if err != nil {
+		return err
+	}
+
 	jsonPayload, err := json.Marshal(&data)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Sensor data json: %s\n", jsonPayload)
-	// TODO Send
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s%s", greenhouseReceiverURL, greenhouseReceiverAPI), bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 201 {
+		return fmt.Errorf("Unexpected response from server: %d - %s", resp.StatusCode, resp.Status)
+	}
 
 	return nil
 }
@@ -139,4 +176,29 @@ func measureTemp() (temperature float32, humidity float32, err error) {
 	temperature, humidity, _, err = dht.ReadDHTxxWithRetry(dht.DHT22, 17, false, 5)
 
 	return
+}
+
+// getAuthorizedClient returns a http client that identifies against cloud function with an identity token
+func getAuthorizedClient() (*http.Client, error) {
+	scopes := "https://www.googleapis.com/auth/userinfo.email"
+	creds, err := google.FindDefaultCredentials(ctx, scopes)
+	if err != nil {
+		return nil, err
+	}
+	targetAudience := greenhouseReceiverURL
+
+	idTokenSource, err := sal.IdTokenSource(
+		sal.IdTokenConfig{
+			Credentials: creds,
+			Audiences:   []string{targetAudience},
+		},
+	)
+	client := &http.Client{
+		Transport: &oauth2.Transport{
+			Source: idTokenSource,
+		},
+	}
+
+	return client, nil
+
 }
