@@ -107,7 +107,7 @@
      cron:
        name: greenhouse script
        special_time: reboot
-       job: "/home/pi/runGreenhouse.sh >/var/log/greenhouse.log 2>&1"
+       job: "/home/pi/runGreenhouse.sh >>/var/log/greenhouse.log 2>&1"
        user: root
      when: prod_device
 
@@ -126,7 +126,7 @@
      cron:
        name: reduce power consumption
        special_time: reboot
-       job: "/home/pi/reducePowerConsumption.sh >/var/log/reducePowerConsumption.log 2>&1"
+       job: "/home/pi/reducePowerConsumption.sh >>/var/log/reducePowerConsumption.log 2>&1"
        user: root
      when: prod_device
 
