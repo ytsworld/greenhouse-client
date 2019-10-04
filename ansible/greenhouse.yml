@@ -93,15 +93,12 @@
    # and have sucessfully built it using ./scripts/trigger_build.sh
    - name: Copy greenhouse-client binary
      copy: src=../greenhouse-client dest=/home/pi/greenhouse-client owner=pi group=pi mode=0755
-     when: prod_device
 
    - name: Copy greenhouse-client wrapper script
-     copy: src=./resources/greenhouse/home/pi/runGreenhouse.sh dest=/home/pi/runGreenhouse.sh owner=pi group=pi mode=0755
-     when: prod_device
+     template: src=./resources/greenhouse/home/pi/runGreenhouse.sh dest=/home/pi/runGreenhouse.sh owner=pi group=pi mode=0755
 
    - name: Copy service account file for server
      copy: src=../secrets/greenhouse-client.sa.json dest=/home/pi/greenhouse-client.sa.json owner=pi group=pi mode=0600
-     when: prod_device
 
    - name: Start the main script on boot
      cron:
@@ -116,11 +113,9 @@
 #############################################
    - name: copy reduce power consumption script
      template: src=./resources/greenhouse/home/pi/reducePowerConsumption.sh dest=/home/pi/reducePowerConsumption.sh owner=pi group=pi mode=0755
-     when: prod_device
 
    - name: copy cancel reduce power consumption script
      template: src=./resources/greenhouse/home/pi/cancelPowerConsumption.sh dest=/home/pi/cancelPowerConsumption.sh owner=pi group=pi mode=0755
-     when: prod_device
 
    - name: Add reduce-script to root crontab
      cron:
