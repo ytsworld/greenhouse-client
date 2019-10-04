@@ -63,8 +63,8 @@ It will be rolled out via ansible on devices configured with `prod_device=true`.
 ### Power consumption
 Production devices have the script [reducePowerConsumption.sh](ansible/resources/greenhouse/home/pi/reducePowerConsumption.sh) added to crontab to run on boot.
 Some minutes after boot this script will power off USB ports and HDMI output.
-After the script succeeded, power consumption is down to ~1 Watt in idle mode and ~1.5 Watt when a measurement is done.
-In my setup the raspberry device is connected to a 12 Volt Battery and a 50W solar panel so it never runs out of juice even in winter.
+After the script succeeded, power consumption is down to ~1.5 Watt.
+In my setup the raspberry device is connected to a 12 Volt Battery and a 50W solar panel so it never runs out of juice even during winter.
 
 To debug what happens on the device connect using ssh and run `~./cancelPowerConsumption.sh` before the power reduction is done.
 
