@@ -95,7 +95,7 @@
      copy: src=../greenhouse-client dest=/home/pi/greenhouse-client owner=pi group=pi mode=0755
 
    - name: Copy greenhouse-client wrapper script
-     copy: src=./resources/greenhouse/home/pi/runGreenhouse.sh dest=/home/pi/runGreenhouse.sh owner=pi group=pi mode=0755
+     template: src=./resources/greenhouse/home/pi/runGreenhouse.sh dest=/home/pi/runGreenhouse.sh owner=pi group=pi mode=0755
 
    - name: Copy service account file for server
      copy: src=../secrets/greenhouse-client.sa.json dest=/home/pi/greenhouse-client.sa.json owner=pi group=pi mode=0600

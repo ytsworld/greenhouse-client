@@ -38,7 +38,7 @@ var (
 )
 
 func init() {
-	greenhouseReceiverURL := os.Getenv("GREENHOUSE_RECEIVER_URL")
+	greenhouseReceiverURL = os.Getenv("GREENHOUSE_RECEIVER_URL")
 	if greenhouseReceiverURL == "" {
 		panic(fmt.Errorf("Expecting server url in env var GREENHOUSE_RECEIVER_URL"))
 	}
@@ -134,7 +134,7 @@ func sendData(data *greenhouse.Data) error {
 		return fmt.Errorf("Unexpected response from server: %d - %s", resp.StatusCode, resp.Status)
 	}
 
-	fmt.Printf("Successfully sent data to server.")
+	fmt.Printf("Successfully sent data to server.\n")
 
 	return nil
 }
