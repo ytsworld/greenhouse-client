@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/d2r2/go-dht"
@@ -20,36 +21,51 @@ import (
 )
 
 const (
-	ledPin                 = "8"
+	progressPin            = "8"  // physical pin - LED pin for indication of measurement progress and success
+	errorPin               = "37" // physical pin - LED pin to indicate errors
 	soilMoistureSPIChannel = 0
-	greenhouseReceiverURL  = "https://europe-west1-yt-dev-242017.cloudfunctions.net/greenhouse-receiver"
 	greenhouseReceiverAPI  = "/api/v1/greenhouse"
 )
 
 var (
-	timeout = time.Duration(30 * time.Second)
-	ctx     = context.Background()
+	timeout               = time.Duration(30 * time.Second)
+	ctx                   = context.Background()
+	r                     *raspi.Adaptor
+	adc                   *spi.MCP3008Driver
+	progressLed           *gpio.LedDriver
+	errorLed              *gpio.LedDriver
+	greenhouseReceiverURL string
 )
 
-func main() {
-	r := raspi.NewAdaptor()
-	adc := spi.NewMCP3008Driver(r)
+func init() {
+	greenhouseReceiverURL := os.Getenv("GREENHOUSE_RECEIVER_URL")
+	if greenhouseReceiverURL == "" {
+		panic(fmt.Errorf("Expecting server url in env var GREENHOUSE_RECEIVER_URL"))
+	}
+
+	r = raspi.NewAdaptor()
+	adc = spi.NewMCP3008Driver(r)
 	adc.Start()
-	led := gpio.NewLedDriver(r, ledPin)
-	led.Off()
+	progressLed = gpio.NewLedDriver(r, progressPin)
+	errorLed = gpio.NewLedDriver(r, errorPin)
+	progressLed.Off()
+	errorLed.Off()
+}
+
+func main() {
 
 	work := func() {
 		gobot.Every(20*time.Second, func() {
 			data := greenhouse.Data{}
 			now := time.Now()
 			data.UnixTimestampUTC = now.Unix()
-			led.On()
+			progressLed.On()
 
 			resistance, err := measureSoilMoisture(adc)
 			if err != nil {
 				data.Success = false
 				data.Message = fmt.Sprintf("%s", err)
-				reportError(&data, led)
+				trySendErrorReport(&data)
 				return
 
 			}
@@ -60,29 +76,30 @@ func main() {
 			if err != nil {
 				data.Success = false
 				data.Message = fmt.Sprintf("%s", err)
-				reportError(&data, led)
+				trySendErrorReport(&data)
 				return
 			}
 			data.Temperature = temperature
 			data.Humidity = humidity
 			data.Success = true
 
-			led.Off()
+			progressLed.Off()
 
 			err = sendData(&data)
 			if err != nil {
-				data.Message = fmt.Sprintf("Error sending data to server. %s", err)
-				reportError(&data, led)
+				fmt.Printf("Error sending data to server. %s\n", err)
+				indicateError()
+				return
 			}
 
-			reportSuccess(&data, led)
+			indicateSuccess()
 
 		})
 	}
 
 	robot := gobot.NewRobot("greenhouse",
 		[]gobot.Connection{r},
-		[]gobot.Device{led, adc},
+		[]gobot.Device{progressLed, errorLed, adc},
 		work,
 	)
 
@@ -117,36 +134,43 @@ func sendData(data *greenhouse.Data) error {
 		return fmt.Errorf("Unexpected response from server: %d - %s", resp.StatusCode, resp.Status)
 	}
 
+	fmt.Printf("Successfully sent data to server.")
+
 	return nil
 }
 
-func reportSuccess(data *greenhouse.Data, led *gpio.LedDriver) {
-	indicateSuccessOnLed(led)
-}
-
-func reportError(data *greenhouse.Data, led *gpio.LedDriver) {
-	indicateErrorOnLed(led)
+func trySendErrorReport(data *greenhouse.Data) {
 	fmt.Printf("ERROR: %s\n", data.Message)
+	fmt.Printf("Trying to send error report to server...\n")
+	err := sendData(data)
+	if err != nil {
+		fmt.Printf("ERROR sending error report to server: %v\n", err)
+	} else {
+		fmt.Printf("Error report was sent\n")
+	}
+	indicateError()
 }
 
-func indicateSuccessOnLed(led *gpio.LedDriver) {
-	led.Off()
+func indicateSuccess() {
+	errorLed.Off()
+	progressLed.Off()
 	time.Sleep(100 * time.Millisecond)
 	for i := 0; i < 2; i++ {
-		led.On()
+		progressLed.On()
 		time.Sleep(300 * time.Millisecond)
-		led.Off()
+		progressLed.Off()
 		time.Sleep(200 * time.Millisecond)
 	}
 }
 
-func indicateErrorOnLed(led *gpio.LedDriver) {
-	led.Off()
+func indicateError() {
+	errorLed.Off()
+	progressLed.Off()
 	time.Sleep(100 * time.Millisecond)
 	for i := 0; i < 5; i++ {
-		led.On()
+		errorLed.On()
 		time.Sleep(100 * time.Millisecond)
-		led.Off()
+		errorLed.Off()
 		time.Sleep(50 * time.Millisecond)
 	}
 }
@@ -166,6 +190,7 @@ func measureSoilMoisture(adc *spi.MCP3008Driver) (resistance int, err error) {
 	return resistance, err
 }
 
+// measureTemp requests the DHT22 sensor for temperature and humidity data
 func measureTemp() (temperature float32, humidity float32, err error) {
 	defer func() {
 		if e := recover(); e != nil {
@@ -179,6 +204,7 @@ func measureTemp() (temperature float32, humidity float32, err error) {
 }
 
 // getAuthorizedClient returns a http client that identifies against cloud function with an identity token
+// Path to service account credential json file is taken from environment variable GOOGLE_APPLICATION_CREDENTIALS
 func getAuthorizedClient() (*http.Client, error) {
 	scopes := "https://www.googleapis.com/auth/userinfo.email"
 	creds, err := google.FindDefaultCredentials(ctx, scopes)
