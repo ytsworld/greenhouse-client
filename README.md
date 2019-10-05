@@ -16,7 +16,7 @@ https://github.com/ytsworld/greenhouse-receiver
 - IC MCP3008 analog/digital converter
 - LED
 - 10kΩ resistor (pull up for DHT-22)
-- 200Ω resistor (depends on led)
+- 100Ω - 200Ω resistor (depends on led color)
 
 ![Breadboard diagram](doc/rpi_DHT22_soil_moisture_breadboard.png "Breadboard diagram")
 Raspberry can only read digital input.
