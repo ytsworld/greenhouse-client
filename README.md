@@ -44,10 +44,10 @@ sudo systemctl start ssh
 ```
 Don't forget to update your `inventory` file with the new password.
 
-On a Linux device (or Windows 10 + Linux subsystem + Docker desktop) ansible can be triggered using these commands from the repository root directory:
+On a Linux device (or Windows 10 + Linux subsystem + Docker desktop) ansible can be triggered using these scripts from the repository root directory:
 ```
-./scripts/startAnsible.sh ./ansible/base-setup.yml
-./scripts/startAnsible.sh ./ansible/greenhouse.yml
+./scripts/startAnsible.sh ./ansible/base-setup.yaml
+./scripts/startAnsible.sh ./ansible/greenhouse.yaml
 ```
 
 ## Build 
