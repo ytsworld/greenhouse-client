@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/d2r2/go-dht"
@@ -21,8 +22,6 @@ import (
 )
 
 const (
-	progressPin            = "8"  // physical pin - LED pin for indication of measurement progress and success
-	errorPin               = "37" // physical pin - LED pin to indicate errors
 	soilMoistureSPIChannel = 0
 	greenhouseReceiverAPI  = "/api/v1/greenhouse"
 )
@@ -32,15 +31,41 @@ var (
 	ctx                   = context.Background()
 	r                     *raspi.Adaptor
 	adc                   *spi.MCP3008Driver
+	progressPin           string // physical pin - LED pin for indication of measurement progress and success
+	errorPin              string // physical pin - LED pin to indicate errors
+	dht22Pin              int    // GPIO pin - digital output of DHT22
 	progressLed           *gpio.LedDriver
 	errorLed              *gpio.LedDriver
 	greenhouseReceiverURL string
+	measureEveryDuration  int // number of seconds to between measurements
 )
 
 func init() {
 	greenhouseReceiverURL = os.Getenv("GREENHOUSE_RECEIVER_URL")
 	if greenhouseReceiverURL == "" {
 		panic(fmt.Errorf("Expecting server url in env var GREENHOUSE_RECEIVER_URL"))
+	}
+	progressPin = os.Getenv("PROGRESS_LED_PHYSICAL_PIN")
+	errorPin = os.Getenv("ERROR_LED_PHYSICAL_PIN")
+	if errorPin == "" || progressPin == "" {
+		panic(fmt.Errorf("Missing env vars PROGRESS_LED_PIN or ERROR_LED_PIN containing physical pin with leds"))
+	}
+
+	var err error
+	dht22Pin, err = strconv.Atoi(os.Getenv("DHT22_DATA_GPIO_PIN"))
+	if err != nil {
+		panic(fmt.Errorf("env var DHT22_DATA_GPIO_PIN does not valid GPIO pin"))
+	}
+	if dht22Pin == 0 {
+		panic(fmt.Errorf("Missing env var DHT22_DATA_GPIO_PIN containing the GPIO pin with DHT22 digital output. %s", err))
+	}
+
+	measureEveryDuration, err = strconv.Atoi(os.Getenv("MEASURE_EVERY_SECONDS"))
+	if err != nil {
+		panic(fmt.Errorf("env var MEASURE_EVERY_SECONDS does not contain a valid amount of seconds. %s", err))
+	}
+	if measureEveryDuration == 0 {
+		panic(fmt.Errorf("Missing env var MEASURE_EVERY_SECONDS does not contain a valid amount of seconds"))
 	}
 
 	r = raspi.NewAdaptor()
@@ -54,8 +79,11 @@ func init() {
 
 func main() {
 
+	// Use led to show that the program has started and check that the leds are connected properly
+	onStartSequence()
+
 	work := func() {
-		gobot.Every(20*time.Second, func() {
+		gobot.Every(time.Duration(measureEveryDuration)*time.Second, func() {
 			data := greenhouse.Data{}
 			now := time.Now()
 			data.UnixTimestampUTC = now.Unix()
@@ -104,6 +132,19 @@ func main() {
 	)
 
 	robot.Start()
+}
+
+func onStartSequence() {
+	progressLed.On()
+	errorLed.On()
+	time.Sleep(2 * time.Second)
+	progressLed.Off()
+	errorLed.Off()
+	time.Sleep(500 * time.Millisecond)
+	progressLed.On()
+	time.Sleep(1 * time.Second)
+	progressLed.Off()
+
 }
 
 func sendData(data *greenhouse.Data) error {
@@ -198,7 +239,7 @@ func measureTemp() (temperature float32, humidity float32, err error) {
 		}
 	}()
 
-	temperature, humidity, _, err = dht.ReadDHTxxWithRetry(dht.DHT22, 17, false, 5)
+	temperature, humidity, _, err = dht.ReadDHTxxWithRetry(dht.DHT22, dht22Pin, false, 5)
 
 	return
 }

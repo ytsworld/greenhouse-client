@@ -100,6 +100,9 @@
    - name: Copy service account file for server
      copy: src=../secrets/greenhouse-client.sa.json dest=/home/pi/greenhouse-client.sa.json owner=pi group=pi mode=0600
 
+   - name: Copy greenhouse kill script
+     template: src=./resources/greenhouse/home/pi/killGreenhouse.sh dest=/home/pi/killGreenhouse.sh owner=pi group=pi mode=0755
+
    - name: Start the main script on boot
      cron:
        name: greenhouse script

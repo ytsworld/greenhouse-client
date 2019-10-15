@@ -14,7 +14,15 @@ eth0_router=192.168.xxx.xxx
 eth0_nameservers=192.168.xxx.xxx
 
 # Base URL for receiver (see https://github.com/ytsworld/greenhouse-receiver)
-greenhouse_recv_url=https://...
+greenhouse_recv_url=https://europe-west1-[PROJECT_ID].cloudfunctions.net/greenhouse-receiver
+# The physical pin number attached led to indicate errors
+greenhouse_client_error_led_physical_pin=12
+# The physical pin number attached led to indicate measurement progress and success
+greenhouse_client_progress_led_physical_pin=8
+# The GPIO pin with is used to collect data from DHT22 digital outputs
+greenhouse_client_dht22_gpio_pin=17
+# The number of seconds to wait between measurements
+greenhouse_client_measure_every_seconds=45
 
 [greenhouse]
 # ansible_ssh_host is the ip address under which the device is currently available

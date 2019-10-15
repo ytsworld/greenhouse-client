@@ -16,14 +16,16 @@ https://github.com/ytsworld/greenhouse-receiver
 - IC MCP3008 analog/digital converter
 - LED
 - 10kΩ resistor (pull up for DHT-22)
-- 200Ω resistor (depends on led)
+- 100Ω - 200Ω resistor (depends on led color)
 
-![Breadboard diagram](doc/rpi_DHT22_Ground_Humidty.png "Breadboard diagram")
+![Breadboard diagram](doc/rpi_DHT22_soil_moisture_breadboard.png "Breadboard diagram")
 Raspberry can only read digital input.
 To read the analog signal of the soil moisture sensor the MCP3008 converter is connected to the SPI interface.
 The IC can convert data from up to eight individual channels.
 DHT22 temperature sensor provides digital data but requires a pull-up resistor on the data pin.
 The led is used as indicator when a measurement is in progress.
+
+![Perfboard diagram](doc/rpi_DHT22_soil_moisture_perfboard.png "Perfboard diagram")
 
 ## Raspberry setup
 This step is a set of recommendations & ideas how to setup raspberry automatically with ansible.
@@ -42,10 +44,10 @@ sudo systemctl start ssh
 ```
 Don't forget to update your `inventory` file with the new password.
 
-On a Linux device (or Windows 10 + Linux subsystem + Docker desktop) ansible can be triggered using these commands from the repository root directory:
+On a Linux device (or Windows 10 + Linux subsystem + Docker desktop) ansible can be triggered using these scripts from the repository root directory:
 ```
-./scripts/startAnsible.sh ./ansible/base-setup.yml
-./scripts/startAnsible.sh ./ansible/greenhouse.yml
+./scripts/startAnsible.sh ./ansible/base-setup.yaml
+./scripts/startAnsible.sh ./ansible/greenhouse.yaml
 ```
 
 ## Build 
@@ -69,6 +71,9 @@ In my setup the raspberry device is connected to a 12 Volt Battery and a 50W sol
 To debug what happens on the device connect using ssh and run `~./cancelPowerConsumption.sh` before the power reduction is done.
 
 ### Further reading
+
+__Raspberry PI GPIO__
+https://www.raspberrypi.org/documentation/usage/gpio/
 
 __Temperature and Humidity sensor__
 
